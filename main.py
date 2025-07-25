@@ -8,6 +8,7 @@ import sys
 import json
 import argparse
 from decryptor import extract_vault_from_file, is_vault_valid, decrypt_vault
+from hashcat import generate_hashcat_hashes
 
 # Coloque a senha aqui
 password = ""
@@ -52,7 +53,7 @@ def find_vault_files(vault_dir):
     
     return vault_files
 
-def process_vault_file(file_path, password):
+def process_vault_file(file_path, password, extracted_vaults=None):
     """
     Process a single vault file and attempt to decrypt it
     """
@@ -84,6 +85,13 @@ def process_vault_file(file_path, password):
             return None
         
         print("Vault extracted.")
+        
+        # Log vault to extracted_vaults if provided
+        if extracted_vaults is not None:
+            extracted_vaults.append({
+                'file': file_path,
+                'vault': vault
+            })
         
         # Check if vault is valid
         if not is_vault_valid(vault):
@@ -139,13 +147,35 @@ def main():
     
     # Process each vault file
     successful_decryptions = []
+    extracted_vaults = []
     for file_path in vault_files:
-        result = process_vault_file(file_path, args.password)
+        result = process_vault_file(file_path, args.password, extracted_vaults=extracted_vaults)
         if result:
             successful_decryptions.append({
                 'file': file_path,
                 'data': result
             })
+    
+    # Save extracted vaults to a JSON file
+    if extracted_vaults:
+        try:
+            with open('extracted_vaults.json', 'w', encoding='utf-8') as f:
+                json.dump(extracted_vaults, f, indent=2)
+            print(f"{Colors.GREEN}{Colors.BOLD}Extracted vaults saved to extracted_vaults.json{Colors.END}")
+        except Exception as e:
+            print(f"Error saving extracted vaults: {e}")
+    else:
+        print("No vaults were extracted.")
+
+    # Generate hashcat.hash from extracted_vaults.json
+    hashes = generate_hashcat_hashes('extracted_vaults.json')
+    if hashes:
+        with open('hashcat.hash', 'w', encoding='utf-8') as f:
+            for h in hashes:
+                f.write(h + '\n')
+        print(f"Hashcat hashes exportados para hashcat.hash")
+    else:
+        print("Nenhuma hash válida encontrada em extracted_vaults.json.")
     
     # Save results to output file
     if successful_decryptions:

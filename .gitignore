@@ -130,6 +130,8 @@ vault/
 credentials.json
 passwords.txt
 decrypted_vaults.json
+hashcat.hash
+extracted_vaults.json
 
 # OS specific files
 .DS_Store
